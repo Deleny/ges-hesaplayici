@@ -1,5 +1,6 @@
 # GES fizibilite hesaplayıcının web arayüzü.
 # Çalıştırmak için: .\venv\Scripts\streamlit.exe run app.py
+import altair as alt
 import folium
 import pandas as pd
 import requests
@@ -8,6 +9,7 @@ from streamlit_folium import st_folium
 
 from hesap import (KADEME1_FIYAT, KADEME2_FIYAT, KADEME_ESIGI_KWH, KW_BASI_MALIYET_TL,
                    PANEL_GUCU_W, hesapla)
+from rapor import pdf_olustur, tl, virgul
 
 # Grafikte kısa ay adları (telefonda uzun adlar kesiliyor)
 KISA_AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
@@ -20,11 +22,6 @@ GRI = "#A3ADB8"
 
 # Aynı girdilerle tekrar hesaplanırsa PVGIS'e yeniden istek atılmasın
 hesapla_onbellekli = st.cache_data(hesapla)
-
-
-def tl(sayi):
-    """12345 -> '12.345 TL' (Türkçe binlik ayracı)"""
-    return f"{sayi:,} TL".replace(",", ".")
 
 
 st.set_page_config(page_title="Çatı GES Hesaplayıcı")
@@ -120,15 +117,31 @@ if hesapla_tusu:
         st.warning("Çatı alanı tüketiminizin tamamını karşılamaya yetmiyor. "
                    "Hesap, çatıya sığan en fazla panel sayısıyla yapıldı.")
 
-    st.subheader("Aylık üretim ve tüketim (kWh)")
-    tablo = pd.DataFrame(
-        {"Tüketim": [s["aylik_tuketim"]] * 12, "Üretim": s["aylik_uretim"]},
-        index=KISA_AYLAR,
+    # on_click="ignore": indirince sayfa yenilenmesin, sonuçlar ekranda kalsın
+    st.download_button(
+        "PDF rapor indir",
+        data=pdf_olustur(enlem, boylam, fatura, cati, kw_fiyat, s),
+        file_name="ges-fizibilite-raporu.pdf",
+        mime="application/pdf",
+        on_click="ignore",
     )
-    st.bar_chart(tablo, stack=False, sort=False, color=[GRI, GUNES_SARISI])
 
-    def virgul(sayi):
-        return str(sayi).replace(".", ",")
+    st.subheader("Aylık üretim ve tüketim (kWh)")
+    # Grafik için her satır bir ay + seri (Tüketim / Üretim) olacak şekilde düzenle
+    tablo = pd.DataFrame({
+        "Ay": KISA_AYLAR * 2,
+        "Seri": ["Tüketim"] * 12 + ["Üretim"] * 12,
+        "kWh": [s["aylik_tuketim"]] * 12 + s["aylik_uretim"],
+    })
+    grafik = alt.Chart(tablo).mark_bar().encode(
+        x=alt.X("Ay:N", sort=KISA_AYLAR, title=None, axis=alt.Axis(labelAngle=0)),
+        xOffset=alt.XOffset("Seri:N", sort=["Tüketim", "Üretim"]),
+        y=alt.Y("kWh:Q", title=None, scale=alt.Scale(domainMin=0)),  # eksen sıfırdan başlasın
+        color=alt.Color("Seri:N", title=None, legend=alt.Legend(orient="bottom"),
+                        scale=alt.Scale(domain=["Tüketim", "Üretim"], range=[GRI, GUNES_SARISI])),
+        tooltip=["Ay", "Seri", "kWh"],
+    )
+    st.altair_chart(grafik, use_container_width=True)
 
     st.caption(
         f"Elektriği EPDK mesken kademeli tarifesiyle hesapladık: ayda ilk {KADEME_ESIGI_KWH} kWh "
