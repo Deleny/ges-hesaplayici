@@ -1,0 +1,13 @@
+# Sayfanın renk ve yazı tipi ayarları
+[theme]
+base = "light"
+primaryColor = "#1E3F66"              # hücre mavisi: tuşlar ve vurgular
+backgroundColor = "#F6F7F5"           # sayfa zemini
+secondaryBackgroundColor = "#E8ECEA"  # form ve kutu zemini
+textColor = "#1B2430"
+font = "Barlow:https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&display=swap"
+headingFont = "'Barlow Semi Condensed':https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600&display=swap"
+baseRadius = "small"
+
+[client]
+toolbarMode = "minimal"   # sağ üstteki "Deploy" tuşunu gizler

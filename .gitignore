@@ -1,0 +1,3 @@
+# Python sanal ortamı ve önbellek dosyaları GitHub'a gitmesin
+venv/
+__pycache__/
